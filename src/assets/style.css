@@ -1,0 +1,31 @@
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+* {
+  box-sizing: border-box;
+}
+
+.cover-uploader .el-upload {
+  border: 1px dashed var(--el-border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  width: 178px;
+  height: 178px;
+  position: relative;
+
+  transition: var(--el-transition-duration-fast);
+}
+
+.cover-uploader .el-upload:hover {
+  border-color: var(--el-color-primary);
+}
+
+.el-icon.cover-uploader-icon {
+  font-size: 28px;
+  color: #8c939d;
+  width: 178px;
+  height: 178px;
+  text-align: center;
+}
