@@ -50,7 +50,7 @@ const handleUploadImage = async (event, insertImage, files) => {
   });
 };
 
-const emit = defineEmits();
+const emit = defineEmits(["htmlContent"]);
 const change = (content, htmlContent) => {
   emit("htmlContent", content, htmlContent);
 };

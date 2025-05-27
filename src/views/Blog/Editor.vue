@@ -33,9 +33,11 @@ const { proxy } = getCurrentInstance();
 //   },
 // });
 
+const emit = defineEmits(["loadList"]);
+
 // editorWindow表单
-const blogFormDataRef = ref();
-const blogFormData = reactive({});
+const blogFormDataRef = ref(null);
+let blogFormData = reactive({ title: "" });
 
 const windowConfig = reactive({
   title: "",
@@ -46,7 +48,8 @@ const windowConfig = reactive({
       type: "primary",
       click: () => {
         console.log("window取消");
-        showDialog.value = false;
+        windowConfig.showDialog = false;
+        emit("loadList");
       },
     },
     {
@@ -63,11 +66,20 @@ const windowConfig = reactive({
 });
 
 const init = (type, data) => {
-  if (type === "add") {
-    getUserInfo();
-  } else if (type === "edit") {
-  }
   windowConfig.showDialog = true;
+  nextTick(() => {
+    blogFormDataRef.value.resetFields();
+    blogFormData.title = "";
+    blogFormData.content = "";
+    blogFormData.markdownContent = "";
+
+    console.log("formdata", blogFormData);
+    if (type === "add") {
+      getUserInfo();
+    } else if (type === "edit") {
+      console.log("row", data);
+    }
+  });
 };
 defineExpose({
   init,
@@ -109,8 +121,8 @@ const setHtmlContent = (contenr, htmlContent) => {
 // ]);
 
 //setting dialog
-const settingFormData = reactive({});
-const settingFormDataRef = ref();
+const settingFormData = reactive({ tag: [] });
+const settingFormDataRef = ref(null);
 const settingDialogConfig = reactive({
   title: "",
   buttons: [
@@ -135,9 +147,12 @@ const settingDialogConfig = reactive({
   showDialog: false,
 });
 
-const rules = {
+const blogFormRules = {
   title: [{ required: true, message: "请输入标题", trigger: "blur" }],
-  content: [{ required: true, message: "请输入内容", trigger: "blur" }],
+  markdownContent: [{ required: false, message: "请输入内容", trigger: "blur" }],
+  content: [{ required: false, message: "请输入内容", trigger: "blur" }],
+};
+const settingFormRules = {
   categoryId: [{ required: true, message: "请选择博客分类", trigger: "blur" }],
   cover: [{ required: false, message: "请上传封面", trigger: "blur" }],
   type: [
@@ -145,7 +160,7 @@ const rules = {
       required: true,
       validator: (rule, value, callback) => {
         // 当类型为转载(假设值为2)时，转载地址必填
-        if (settingFormData.type === 2 && !value) {
+        if (blogFormData.type === 2 && !value) {
           callback(new Error("转载类型必须填写转载地址"));
         } else {
           callback();
@@ -158,7 +173,7 @@ const rules = {
   reprintUrl: [{ required: true, message: "请输入转载地址", trigger: "blur" }],
   allowComment: [{ required: true, message: "请选择是否允许评论", trigger: "blur" }],
   summary: [{ required: false, message: "请输入内容", trigger: "" }],
-  tags: [{ required: false, message: "请输入标签", trigger: "blur" }],
+  tag: [{ required: false, message: "请输入标签", trigger: "blur" }],
 };
 
 // 专题分类
@@ -181,6 +196,9 @@ const showSettingDialog = () => {
       return;
     }
     settingDialogConfig.showDialog = true;
+    nextTick(() => {
+      settingFormDataRef.value.resetFields();
+    });
   });
 };
 
@@ -190,10 +208,10 @@ const submitBlog = () => {
       return;
     }
     const params = {
-      editorType: 1,
       ...blogFormData,
       ...settingFormData,
     };
+    params.tag = params.tag.join("|");
     let result = await proxy.Request({
       url: api.saveBlog,
       params,
@@ -205,7 +223,8 @@ const submitBlog = () => {
 
     message.success("保存博客成功");
     settingDialogConfig.showDialog = false;
-    showEditorWindow.showDialog = false;
+    windowConfig.showDialog = false;
+    emit("loadList");
   });
 };
 </script>
@@ -213,7 +232,7 @@ const submitBlog = () => {
 <template>
   <Window v-model:show="windowConfig.showDialog" :buttons="windowConfig.buttons">
     <template #body>
-      <el-form ref="blogFormDataRef" :model="blogFormData" :rules="rules">
+      <el-form ref="blogFormDataRef" :model="blogFormData" :rules="blogFormRules">
         <el-form-item prop="title">
           <el-input
             v-model.trim="blogFormData.title"
@@ -221,16 +240,18 @@ const submitBlog = () => {
             placeholder="请输入标题"
           ></el-input>
         </el-form-item>
-        <el-form-item prop="content">
+        <el-form-item prop="markdownContent" v-if="blogFormData.editorType">
           <EditorMarkdown
             v-model:markdownContent="blogFormData.markdownContent"
             :height="windowConfig.height"
             @htmlContent="setHtmlContent"
           ></EditorMarkdown>
-          <!-- <EditorHtml
+        </el-form-item>
+        <el-form-item prop="content" v-else>
+          <EditorHtml
             v-model:htmlContent="blogFormData.content"
-            :height="props.height"
-          ></EditorHtml> -->
+            :height="windowConfig.height"
+          ></EditorHtml>
         </el-form-item>
       </el-form>
     </template>
@@ -240,13 +261,13 @@ const submitBlog = () => {
     :title="settingDialogConfig.title"
     :showClose="settingDialogConfig.showClose"
     :buttons="settingDialogConfig.buttons"
-    :width="700"
+    width="700px"
   >
     <template #body>
       <el-form
         :model="settingFormData"
         class="setting-dialog-edit-form"
-        :rules="rules"
+        :rules="settingFormRules"
         ref="settingFormDataRef"
         label-width="100px"
       >
@@ -294,9 +315,9 @@ const submitBlog = () => {
             @keyup.enter=""
           />
         </el-form-item>
-        <el-form-item prop="tags" label="博客 标签">
+        <el-form-item prop="tag" label="博客标签">
           <el-input-tag
-            v-model="input"
+            v-model="settingFormData.tag"
             placeholder="添加标签更容易被搜索引擎收录"
             aria-label="Please click the Enter key after input"
           />

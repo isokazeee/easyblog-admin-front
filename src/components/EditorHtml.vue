@@ -58,14 +58,14 @@ const focus = () => {
       style="border-bottom: 1px solid #ccc"
       :editor="editorRef"
       :defaultConfig="toolbarConfig"
-      :mode="mode"
+      mode="default"
     />
     <Editor
       class="Editor"
       :style="{ 'min-height': '850px', 'overflow-y': 'hidden' }"
       v-model="htmlContent"
       :defaultConfig="editorConfig"
-      :mode="mode"
+      mode="default"
       @onCreated="handleCreated"
       @click="focus"
     />

@@ -112,7 +112,7 @@ const showEditorWindow = (type, data) => {
       ref="searchFormDataRef"
       label-width="auto"
     >
-      <el-row gutter="20">
+      <el-row :gutter="20">
         <el-col :span="4">
           <el-form-item prop="titleFuzzy" label="标题">
             <el-input
@@ -191,14 +191,16 @@ const showEditorWindow = (type, data) => {
         <el-row> 更新时间：{{ row.lastUpdateTime }} </el-row>
       </template>
       <template #op="{ index, row }">
-        <el-button type="primary" size="small" plain @click="showEdit('edit', row)">编辑</el-button>
+        <el-button type="primary" size="small" plain @click="showEditorWindow('edit', row)"
+          >编辑</el-button
+        >
         <el-divider direction="vertical"></el-divider>
         <el-button type="primary" size="small" plain @click="del(row)">删除</el-button>
         <el-divider direction="vertical"></el-divider>
         <el-button type="primary" size="small" plain @click="preview()">预览</el-button>
       </template>
     </Table>
-    <Editor ref="blogEditorRef"></Editor>
+    <Editor ref="blogEditorRef" @loadList="loadDataList"></Editor>
   </div>
 </template>
 
