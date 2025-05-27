@@ -23,7 +23,7 @@ const markdownContent = defineModel("markdownContent", {
 const props = defineProps({
   height: {
     type: String,
-    default: "400px",
+    default: "880px",
   },
 });
 
@@ -49,6 +49,11 @@ const handleUploadImage = async (event, insertImage, files) => {
     desc: "图片",
   });
 };
+
+const emit = defineEmits();
+const change = (content, htmlContent) => {
+  emit("htmlContent", content, htmlContent);
+};
 </script>
 
 <template>
@@ -58,6 +63,7 @@ const handleUploadImage = async (event, insertImage, files) => {
     :disabled-menus="[]"
     :include-level="[1, 2, 3, 4, 5, 6]"
     @upload-image="handleUploadImage"
+    @change="change"
   ></v-md-editor>
 </template>
 

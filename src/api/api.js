@@ -9,5 +9,6 @@ const api = {
   changeCategorySort: "/api/category/changeCategorySort4Blog",
   loadCategory: "/api/category/loadAllCategory4Blog",
   loadBlog: "/api/blog/loadBlog",
+  saveBlog: "/api/blog/saveBlog",
 };
 export default api;

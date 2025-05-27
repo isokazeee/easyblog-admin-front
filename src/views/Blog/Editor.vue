@@ -3,6 +3,7 @@ import { reactive, ref, nextTick, getCurrentInstance } from "vue";
 import Window from "@/components/Window.vue";
 import EditorHtml from "@/components/EditorHtml.vue";
 import EditorMarkdown from "@/components/EditorMarkdown.vue";
+import message from "@/utils/Message";
 import api from "@/api/api";
 
 const { proxy } = getCurrentInstance();
@@ -24,7 +25,7 @@ const props = defineProps({
   },
   height: {
     type: String,
-    default: "",
+    default: "880px ",
   },
   showClose: {
     type: Boolean,
@@ -32,71 +33,13 @@ const props = defineProps({
   },
 });
 
-const formDataRef = ref();
-const formData = reactive({});
+// editorWindow表单
+const blogFormDataRef = ref();
+const blogFormData = reactive({});
 
-//setting dialog
-const settingFormData = reactive({});
-const settingFormDataRef = ref();
-const settingDialogConfig = reactive({
-  title: "",
-  buttons: [
-    {
-      text: "取消",
-      type: "primary",
-      click: () => {
-        console.log("取消");
-        settingDialogConfig.showDialog = false;
-      },
-    },
-    {
-      text: "确定",
-      type: "success",
-      click: () => {
-        //submit
-      },
-    },
-  ],
-  showClose: true,
-  showDialog: false,
-});
-
-const rules = {
-  categoryId: [{ required: true, message: "请选择分类", trigger: "blur" }],
-  cover: [{ required: false, message: "请上传封面", trigger: "blur" }],
-  type: [
-    {
-      required: true,
-      validator: (rule, value, callback) => {
-        // 当类型为转载(假设值为2)时，转载地址必填
-        if (settingFormData.type === 2 && !value) {
-          callback(new Error("转载类型必须填写转载地址"));
-        } else {
-          callback();
-        }
-      },
-      message: "请选择类型",
-      trigger: "blur",
-    },
-  ],
-  reprintUrl: [{ required: true, message: "请输入转载地址", trigger: "blur" }],
-  allowComment: [{ required: true, message: "请选择评论", trigger: "blur" }],
-  summary: [{ required: false, message: "请输入内容", trigger: "" }],
-  tags: [{ required: false, message: "请输入标签", trigger: "blur" }],
+const setHtmlContent = (contenr, htmlContent) => {
+  blogFormData.content = htmlContent;
 };
-
-const categoryList = ref([]);
-
-const loadCategoryList = async () => {
-  let result = await proxy.Request({
-    url: api.loadCategory,
-  });
-  if (!result) {
-    return;
-  }
-  categoryList.value = result.data;
-};
-loadCategoryList();
 
 // editorwindow buttons
 const buttons = reactive([
@@ -117,16 +60,105 @@ const buttons = reactive([
     },
   },
 ]);
-const showSettingDialog = (type, data) => {
-  settingDialogConfig.showDialog = true;
-  nextTick(() => {
-    // formDataRef.value.resetFields();
-    // if (type === "add") {
-    //   dialogConfig.title = "新增分类";
-    // } else if (type === "edit") {
-    //   dialogConfig.title = "编辑博客";
-    //   Object.assign(formData, data);
-    // }
+
+//setting dialog
+const settingFormData = reactive({});
+const settingFormDataRef = ref();
+const settingDialogConfig = reactive({
+  title: "",
+  buttons: [
+    {
+      text: "取消",
+      type: "primary",
+      click: () => {
+        console.log("取消");
+        settingDialogConfig.showDialog = false;
+      },
+    },
+    {
+      text: "确定",
+      type: "success",
+      click: () => {
+        //submit
+        submitBlog();
+      },
+    },
+  ],
+  showClose: true,
+  showDialog: false,
+});
+
+const rules = {
+  title: [{ required: true, message: "请输入标题", trigger: "blur" }],
+  content: [{ required: true, message: "请输入内容", trigger: "blur" }],
+  categoryId: [{ required: true, message: "请选择博客分类", trigger: "blur" }],
+  cover: [{ required: false, message: "请上传封面", trigger: "blur" }],
+  type: [
+    {
+      required: true,
+      validator: (rule, value, callback) => {
+        // 当类型为转载(假设值为2)时，转载地址必填
+        if (settingFormData.type === 2 && !value) {
+          callback(new Error("转载类型必须填写转载地址"));
+        } else {
+          callback();
+        }
+      },
+      message: "请选择博客类型",
+      trigger: "blur",
+    },
+  ],
+  reprintUrl: [{ required: true, message: "请输入转载地址", trigger: "blur" }],
+  allowComment: [{ required: true, message: "请选择是否允许评论", trigger: "blur" }],
+  summary: [{ required: false, message: "请输入内容", trigger: "" }],
+  tags: [{ required: false, message: "请输入标签", trigger: "blur" }],
+};
+
+// 专题分类
+const categoryList = ref([]);
+
+const loadCategoryList = async () => {
+  let result = await proxy.Request({
+    url: api.loadCategory,
+  });
+  if (!result) {
+    return;
+  }
+  categoryList.value = result.data;
+};
+loadCategoryList();
+
+const showSettingDialog = () => {
+  blogFormDataRef.value.validate((valid) => {
+    if (!valid) {
+      return;
+    }
+    settingDialogConfig.showDialog = true;
+  });
+};
+
+const submitBlog = () => {
+  settingFormDataRef.value.validate(async (valid) => {
+    if (!valid) {
+      return;
+    }
+    const params = {
+      editorType: 1,
+      ...blogFormData,
+      ...settingFormData,
+    };
+    let result = await proxy.Request({
+      url: api.saveBlog,
+      params,
+    });
+
+    if (!result) {
+      return;
+    }
+
+    message.success("保存博客成功");
+    settingDialogConfig.showDialog = false;
+    showDialog.value = false;
   });
 };
 </script>
@@ -134,13 +166,24 @@ const showSettingDialog = (type, data) => {
 <template>
   <Window v-model:show="showDialog" :buttons="buttons">
     <template #body>
-      <el-form ref="formDataRef" :model="formData">
+      <el-form ref="blogFormDataRef" :model="blogFormData" :rules="rules">
         <el-form-item prop="title">
-          <el-input v-model.trim="props.title" size="large" placeholder="请输入标题"></el-input>
+          <el-input
+            v-model.trim="blogFormData.title"
+            size="large"
+            placeholder="请输入标题"
+          ></el-input>
         </el-form-item>
-        <el-form-item prop="title">
-          <!-- <EditorMarkdown v-model:markdownContent="content" :height="props.height"></EditorMarkdown> -->
-          <EditorHtml v-model:htmlContent="formData.content" :height="props.height"></EditorHtml>
+        <el-form-item prop="content">
+          <EditorMarkdown
+            v-model:markdownContent="blogFormData.markdownContent"
+            :height="props.height"
+            @htmlContent="setHtmlContent"
+          ></EditorMarkdown>
+          <!-- <EditorHtml
+            v-model:htmlContent="blogFormData.content"
+            :height="props.height"
+          ></EditorHtml> -->
         </el-form-item>
       </el-form>
     </template>
@@ -190,8 +233,9 @@ const showSettingDialog = (type, data) => {
         </el-form-item>
         <el-form-item prop="allowComment" label="评论">
           <el-radio-group v-model="settingFormData.allowComment">
-            <el-radio value="允许">允许</el-radio>
-            <el-radio value="不允许">不允许</el-radio>
+            <el-radio value="1">允许</el-radio>
+            <el-radio value="0">不允许</el-radio>
+            <span class="allow-comment-info">请先在评论设置里设置好相应参数，评论才会生效</span>
           </el-radio-group>
         </el-form-item>
         <el-form-item prop="summary" label="博客摘要">
@@ -214,4 +258,10 @@ const showSettingDialog = (type, data) => {
   </Dialog>
 </template>
 
-<style scoped></style>
+<style scoped>
+.allow-comment-info {
+  font-size: 14px;
+  color: #a4a3a3;
+  margin-right: 5px;
+}
+</style>

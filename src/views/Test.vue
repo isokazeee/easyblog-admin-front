@@ -1,13 +1,20 @@
 <script setup>
 import EditorHtml from "@/components/EditorHtml.vue";
-import { ref } from "vue";
+import { getCurrentInstance, ref } from "vue";
+const { proxy } = getCurrentInstance();
 
-const htmlContent = ref("<p>这是一个测试内容</p>");
+const test = async () => {
+  let result = await proxy.Request({
+    url: "/api/blog/getBlogById",
+    params: {
+      blogId: "IqACygRukt",
+    },
+  });
+};
 </script>
 
 <template>
-  <EditorHtml v-model:htmlContent="htmlContent"></EditorHtml>
-  {{ htmlContent }}
+  <button @click="test">测试</button>
 </template>
 
 <style scoped></style>
