@@ -8,58 +8,105 @@ import api from "@/api/api";
 
 const { proxy } = getCurrentInstance();
 
-const showDialog = defineModel("showDialog", {
-  type: Boolean,
-  default: false,
-});
+// const showDialog = defineModel("showDialog", {
+//   type: Boolean,
+//   default: false,
+// });
 
-const content = defineModel("content", {
-  type: String,
-  default: "",
-});
+// const content = defineModel("content", {
+//   type: String,
+//   default: "",
+// });
 
-const props = defineProps({
-  title: {
-    type: String,
-    default: "",
-  },
-  height: {
-    type: String,
-    default: "880px ",
-  },
-  showClose: {
-    type: Boolean,
-    default: true,
-  },
-});
+// const props = defineProps({
+//   title: {
+//     type: String,
+//     default: "",
+//   },
+//   height: {
+//     type: String,
+//     default: "880px ",
+//   },
+//   showClose: {
+//     type: Boolean,
+//     default: true,
+//   },
+// });
 
 // editorWindow表单
 const blogFormDataRef = ref();
 const blogFormData = reactive({});
+
+const windowConfig = reactive({
+  title: "",
+  content: "",
+  buttons: [
+    {
+      text: "取消",
+      type: "primary",
+      click: () => {
+        console.log("window取消");
+        showDialog.value = false;
+      },
+    },
+    {
+      text: "确定",
+      type: "success",
+      click: () => {
+        // show settingDialog
+        showSettingDialog();
+      },
+    },
+  ],
+  showClose: true,
+  showDialog: false,
+});
+
+const init = (type, data) => {
+  if (type === "add") {
+    getUserInfo();
+  } else if (type === "edit") {
+  }
+  windowConfig.showDialog = true;
+};
+defineExpose({
+  init,
+});
+
+const getUserInfo = async () => {
+  const result = await proxy.Request({
+    url: api.getUserInfo,
+  });
+
+  if (!result) {
+    return;
+  }
+  blogFormData.editorType = result.data.editorType;
+};
 
 const setHtmlContent = (contenr, htmlContent) => {
   blogFormData.content = htmlContent;
 };
 
 // editorwindow buttons
-const buttons = reactive([
-  {
-    text: "取消",
-    type: "primary",
-    click: () => {
-      console.log("window取消");
-      showDialog.value = false;
-    },
-  },
-  {
-    text: "确定",
-    type: "success",
-    click: () => {
-      // show settingDialog
-      showSettingDialog();
-    },
-  },
-]);
+// const buttons = reactive([
+//   {
+//     text: "取消",
+//     type: "primary",
+//     click: () => {
+//       console.log("window取消");
+//       showDialog.value = false;
+//     },
+//   },
+//   {
+//     text: "确定",
+//     type: "success",
+//     click: () => {
+//       // show settingDialog
+//       showSettingDialog();
+//     },
+//   },
+// ]);
 
 //setting dialog
 const settingFormData = reactive({});
@@ -158,13 +205,13 @@ const submitBlog = () => {
 
     message.success("保存博客成功");
     settingDialogConfig.showDialog = false;
-    showDialog.value = false;
+    showEditorWindow.showDialog = false;
   });
 };
 </script>
 
 <template>
-  <Window v-model:show="showDialog" :buttons="buttons">
+  <Window v-model:show="windowConfig.showDialog" :buttons="windowConfig.buttons">
     <template #body>
       <el-form ref="blogFormDataRef" :model="blogFormData" :rules="rules">
         <el-form-item prop="title">
@@ -177,7 +224,7 @@ const submitBlog = () => {
         <el-form-item prop="content">
           <EditorMarkdown
             v-model:markdownContent="blogFormData.markdownContent"
-            :height="props.height"
+            :height="windowConfig.height"
             @htmlContent="setHtmlContent"
           ></EditorMarkdown>
           <!-- <EditorHtml

@@ -96,42 +96,10 @@ const loadCategoryList = async () => {
 loadCategoryList();
 
 // editorwindow
-const windowConfig = reactive({
-  title: "",
-  buttons: [
-    {
-      text: "取消",
-      type: "primary",
-      click: () => {
-        console.log("取消");
-        windowConfig.showDialog = false;
-      },
-    },
-    {
-      text: "确定",
-      type: "success",
-      click: () => {
-        // show settingDialog
-      },
-    },
-  ],
-  showClose: true,
-  showDialog: false,
-});
 
-const content = ref("");
-
+const blogEditorRef = ref();
 const showEditorWindow = (type, data) => {
-  windowConfig.showDialog = true;
-  nextTick(() => {
-    // formDataRef.value.resetFields();
-    // if (type === "add") {
-    //   dialogConfig.title = "新增分类";
-    // } else if (type === "edit") {
-    //   dialogConfig.title = "编辑博客";
-    //   Object.assign(formData, data);
-    // }
-  });
+  blogEditorRef.value.init(type, data);
 };
 </script>
 
@@ -230,13 +198,7 @@ const showEditorWindow = (type, data) => {
         <el-button type="primary" size="small" plain @click="preview()">预览</el-button>
       </template>
     </Table>
-    <Editor
-      v-model:showDialog="windowConfig.showDialog"
-      v-model:content="content"
-      :title="windowConfig.title"
-      :height="windowConfig.height"
-      :showClose="windowConfig.showClose"
-    ></Editor>
+    <Editor ref="blogEditorRef"></Editor>
   </div>
 </template>
 

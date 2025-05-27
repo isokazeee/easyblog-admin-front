@@ -10,5 +10,6 @@ const api = {
   loadCategory: "/api/category/loadAllCategory4Blog",
   loadBlog: "/api/blog/loadBlog",
   saveBlog: "/api/blog/saveBlog",
+  getUserInfo: "/api/getUserInfo",
 };
 export default api;
