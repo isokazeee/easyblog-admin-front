@@ -67,6 +67,7 @@ const windowConfig = reactive({
 
 const init = (type, data) => {
   windowConfig.showDialog = true;
+
   nextTick(() => {
     blogFormDataRef.value.resetFields();
     blogFormData.title = "";
