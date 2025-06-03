@@ -11,5 +11,6 @@ const api = {
   loadBlog: "/api/blog/loadBlog",
   saveBlog: "/api/blog/saveBlog",
   getUserInfo: "/api/getUserInfo",
+  getBlog: "/api/blog/getBlogById",
 };
 export default api;

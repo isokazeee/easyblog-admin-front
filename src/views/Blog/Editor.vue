@@ -5,39 +5,15 @@ import EditorHtml from "@/components/EditorHtml.vue";
 import EditorMarkdown from "@/components/EditorMarkdown.vue";
 import message from "@/utils/Message";
 import api from "@/api/api";
+import { rowContextKey } from "element-plus";
 
 const { proxy } = getCurrentInstance();
-
-// const showDialog = defineModel("showDialog", {
-//   type: Boolean,
-//   default: false,
-// });
-
-// const content = defineModel("content", {
-//   type: String,
-//   default: "",
-// });
-
-// const props = defineProps({
-//   title: {
-//     type: String,
-//     default: "",
-//   },
-//   height: {
-//     type: String,
-//     default: "880px ",
-//   },
-//   showClose: {
-//     type: Boolean,
-//     default: true,
-//   },
-// });
 
 const emit = defineEmits(["loadList"]);
 
 // editorWindow表单
 const blogFormDataRef = ref(null);
-let blogFormData = reactive({ title: "" });
+const blogFormData = ref({});
 
 const windowConfig = reactive({
   title: "",
@@ -60,6 +36,13 @@ const windowConfig = reactive({
         showSettingDialog();
       },
     },
+    {
+      text: "重置",
+      type: "info",
+      click: () => {
+        blogFormDataRef.value.resetFields();
+      },
+    },
   ],
   showClose: true,
   showDialog: false,
@@ -67,18 +50,20 @@ const windowConfig = reactive({
 
 const init = (type, data) => {
   windowConfig.showDialog = true;
+  windowConfig.type = type;
+  blogFormData.value = {};
+  settingFormData.value = { tag: [] };
 
   nextTick(() => {
+    if (!blogFormDataRef.value) {
+      console.log("blogFormDataRef is null");
+    }
     blogFormDataRef.value.resetFields();
-    blogFormData.title = "";
-    blogFormData.content = "";
-    blogFormData.markdownContent = "";
-
-    console.log("formdata", blogFormData);
     if (type === "add") {
       getUserInfo();
     } else if (type === "edit") {
-      console.log("row", data);
+      // console.log("data", data.blogId);
+      getBlogContent(data.blogId);
     }
   });
 };
@@ -94,35 +79,41 @@ const getUserInfo = async () => {
   if (!result) {
     return;
   }
-  blogFormData.editorType = result.data.editorType;
+  blogFormData.value.editorType = result.data.editorType;
+  // console.log("result:", blogFormData.value);
+};
+
+const getBlogContent = async (blogId) => {
+  const result = await proxy.Request({
+    url: api.getBlog,
+    params: {
+      blogId,
+    },
+  });
+  if (!result) {
+    return;
+  }
+  blogFormData.value.blogId = result.data.blogId;
+  blogFormData.value.title = result.data.title;
+  blogFormData.value.content = result.data.content;
+  blogFormData.value.markdownContent = result.data.markdownContent;
+  blogFormData.value.editorType = result.data.editorType;
+  settingFormData.value.categoryId = result.data.categoryId;
+  settingFormData.value.cover = result.data.cover;
+  settingFormData.value.summary = result.data.summary;
+  settingFormData.value.tag = result.data.tag ? result.data.tag.split("|") : [];
+  settingFormData.value.type = result.data.type;
+  settingFormData.value.reprintUrl = result.data.reprintUrl;
+  settingFormData.value.allowComment = result.data.allowComment;
+  // console.log("settingFormData", settingFormData);
 };
 
 const setHtmlContent = (contenr, htmlContent) => {
-  blogFormData.content = htmlContent;
+  blogFormData.value.content = htmlContent;
 };
 
-// editorwindow buttons
-// const buttons = reactive([
-//   {
-//     text: "取消",
-//     type: "primary",
-//     click: () => {
-//       console.log("window取消");
-//       showDialog.value = false;
-//     },
-//   },
-//   {
-//     text: "确定",
-//     type: "success",
-//     click: () => {
-//       // show settingDialog
-//       showSettingDialog();
-//     },
-//   },
-// ]);
-
 //setting dialog
-const settingFormData = reactive({ tag: [] });
+let settingFormData = ref({ tag: [] });
 const settingFormDataRef = ref(null);
 const settingDialogConfig = reactive({
   title: "",
@@ -143,6 +134,14 @@ const settingDialogConfig = reactive({
         submitBlog();
       },
     },
+    {
+      text: "重置",
+      type: "info",
+      click: () => {
+        //save
+        settingFormDataRef.value.resetFields();
+      },
+    },
   ],
   showClose: true,
   showDialog: false,
@@ -150,8 +149,8 @@ const settingDialogConfig = reactive({
 
 const blogFormRules = {
   title: [{ required: true, message: "请输入标题", trigger: "blur" }],
-  markdownContent: [{ required: false, message: "请输入内容", trigger: "blur" }],
-  content: [{ required: false, message: "请输入内容", trigger: "blur" }],
+  markdownContent: [{ required: true, message: "请输入内容", trigger: "blur" }],
+  content: [{ required: true, message: "请输入内容", trigger: "blur" }],
 };
 const settingFormRules = {
   categoryId: [{ required: true, message: "请选择博客分类", trigger: "blur" }],
@@ -159,14 +158,7 @@ const settingFormRules = {
   type: [
     {
       required: true,
-      validator: (rule, value, callback) => {
-        // 当类型为转载(假设值为2)时，转载地址必填
-        if (blogFormData.type === 2 && !value) {
-          callback(new Error("转载类型必须填写转载地址"));
-        } else {
-          callback();
-        }
-      },
+
       message: "请选择博客类型",
       trigger: "blur",
     },
@@ -198,7 +190,10 @@ const showSettingDialog = () => {
     }
     settingDialogConfig.showDialog = true;
     nextTick(() => {
-      settingFormDataRef.value.resetFields();
+      if (windowConfig.type == "add") {
+        console.log("add");
+        settingFormDataRef.value.resetFields();
+      }
     });
   });
 };
@@ -209,9 +204,10 @@ const submitBlog = () => {
       return;
     }
     const params = {
-      ...blogFormData,
-      ...settingFormData,
+      ...blogFormData.value,
+      ...settingFormData.value,
     };
+    console.log(params);
     params.tag = params.tag.join("|");
     let result = await proxy.Request({
       url: api.saveBlog,
@@ -233,13 +229,9 @@ const submitBlog = () => {
 <template>
   <Window v-model:show="windowConfig.showDialog" :buttons="windowConfig.buttons">
     <template #body>
-      <el-form ref="blogFormDataRef" :model="blogFormData" :rules="blogFormRules">
+      <el-form :model="blogFormData" :rules="blogFormRules" ref="blogFormDataRef">
         <el-form-item prop="title">
-          <el-input
-            v-model.trim="blogFormData.title"
-            size="large"
-            placeholder="请输入标题"
-          ></el-input>
+          <el-input v-model="blogFormData.title" size="large" placeholder="请输入标题"></el-input>
         </el-form-item>
         <el-form-item prop="markdownContent" v-if="blogFormData.editorType">
           <EditorMarkdown
@@ -292,18 +284,18 @@ const submitBlog = () => {
           <CoverUpload v-model="settingFormData.cover"></CoverUpload>
         </el-form-item>
         <el-form-item prop="type" label="博客类型">
-          <el-radio-group v-model="settingFormData.type">
-            <el-radio value="0">原创</el-radio>
-            <el-radio value="1">转载</el-radio>
+          <el-radio-group v-model="settingFormData.type" :validate-event="false">
+            <el-radio :value="0">原创</el-radio>
+            <el-radio :value="1">转载</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item prop="reprintUrl" label="转载地址" v-if="settingFormData.type === '1'">
+        <el-form-item prop="reprintUrl" label="转载地址" v-if="settingFormData.type === 1">
           <el-input v-model="settingFormData.reprintUrl" placeholder="请输入转载地址" />
         </el-form-item>
         <el-form-item prop="allowComment" label="评论">
-          <el-radio-group v-model="settingFormData.allowComment">
-            <el-radio value="1">允许</el-radio>
-            <el-radio value="0">不允许</el-radio>
+          <el-radio-group v-model="settingFormData.allowComment" :validate-event="false">
+            <el-radio :value="1">允许</el-radio>
+            <el-radio :value="0">不允许</el-radio>
             <span class="allow-comment-info">请先在评论设置里设置好相应参数，评论才会生效</span>
           </el-radio-group>
         </el-form-item>
